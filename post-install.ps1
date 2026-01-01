@@ -128,6 +128,75 @@ function Test-WingetInstalled {
 }
 
 # ============================================================================
+# INSTALL WINGET
+# ============================================================================
+function Install-Winget {
+    Write-Host "[INFO] winget is not installed. Installing winget..." -ForegroundColor Cyan
+    
+    try {
+        # Download latest winget package from GitHub
+        Write-Host "[INFO] Downloading winget installer..." -ForegroundColor Cyan
+        
+        # Get latest release info
+        $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/microsoft/winget-cli/releases/latest"
+        $downloadUrl = ($releases.assets | Where-Object { $_.name -match "\.msixbundle$" }).browser_download_url
+        
+        if (-not $downloadUrl) {
+            throw "Could not find winget installer package"
+        }
+        
+        $installerPath = "$env:TEMP\Microsoft.DesktopAppInstaller.msixbundle"
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $installerPath -UseBasicParsing
+        
+        # Download VCLibs dependency
+        Write-Host "[INFO] Downloading required dependencies..." -ForegroundColor Cyan
+        $vcLibsUrl = "https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx"
+        $vcLibsPath = "$env:TEMP\Microsoft.VCLibs.x64.14.00.Desktop.appx"
+        Invoke-WebRequest -Uri $vcLibsUrl -OutFile $vcLibsPath -UseBasicParsing
+        
+        # Download UI.Xaml dependency
+        $uiXamlUrl = "https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.x64.appx"
+        $uiXamlPath = "$env:TEMP\Microsoft.UI.Xaml.2.8.x64.appx"
+        Invoke-WebRequest -Uri $uiXamlUrl -OutFile $uiXamlPath -UseBasicParsing
+        
+        # Install dependencies first
+        Write-Host "[INFO] Installing dependencies..." -ForegroundColor Cyan
+        Add-AppxPackage -Path $vcLibsPath -ErrorAction SilentlyContinue
+        Add-AppxPackage -Path $uiXamlPath -ErrorAction SilentlyContinue
+        
+        # Install winget
+        Write-Host "[INFO] Installing winget..." -ForegroundColor Cyan
+        Add-AppxPackage -Path $installerPath
+        
+        # Clean up
+        Remove-Item $installerPath -Force -ErrorAction SilentlyContinue
+        Remove-Item $vcLibsPath -Force -ErrorAction SilentlyContinue
+        Remove-Item $uiXamlPath -Force -ErrorAction SilentlyContinue
+        
+        Write-Host "[OK] winget has been installed successfully" -ForegroundColor Green
+        Write-Host "[INFO] Please close and reopen PowerShell, then run this script again" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "Press any key to exit..." -ForegroundColor Gray
+        $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+        exit 0
+    }
+    catch {
+        Write-Host "[ERROR] Failed to install winget: $_" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "Please install winget manually:" -ForegroundColor Yellow
+        Write-Host "1. Open Microsoft Store" -ForegroundColor Yellow
+        Write-Host "2. Search for 'App Installer'" -ForegroundColor Yellow
+        Write-Host "3. Install or Update it" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Or download from: https://github.com/microsoft/winget-cli/releases" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Press any key to exit..." -ForegroundColor Gray
+        $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+        exit 1
+    }
+}
+
+# ============================================================================
 # INSTALL PACKAGE
 # ============================================================================
 function Install-WingetPackage {
@@ -163,8 +232,8 @@ Write-Host ""
 
 # Check for winget
 if (-not (Test-WingetInstalled)) {
-    Write-Host "[ERROR] winget is not installed. Please install App Installer from Microsoft Store or update Windows." -ForegroundColor Red
-    exit 1
+    Install-Winget
+    # After installing winget, the script will exit and user needs to restart PowerShell
 }
 
 # Install/Enable WSL2 (required for Docker Desktop)
