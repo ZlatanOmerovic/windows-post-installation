@@ -6,7 +6,7 @@
 .DESCRIPTION
     Downloads and installs latest versions of common development tools and applications silently
 .NOTES
-    ⚠️  THIS SCRIPT MUST BE RUN AS ADMINISTRATOR ⚠️
+    This script MUST be run as Administrator
     Requires Windows 10 1809 or later (for winget)
 #>
 
@@ -14,12 +14,10 @@
 # ADMINISTRATOR CHECK
 # ============================================================================
 Write-Host ""
-Write-Host "╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║                                                                ║" -ForegroundColor Cyan
-Write-Host "║        Windows Software Installation Script                    ║" -ForegroundColor Cyan
-Write-Host "║        ⚠️  MUST BE RUN AS ADMINISTRATOR ⚠️                      ║" -ForegroundColor Yellow
-Write-Host "║                                                                ║" -ForegroundColor Cyan
-Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "===============================================================" -ForegroundColor Cyan
+Write-Host "        Windows Software Installation Script                   " -ForegroundColor Cyan
+Write-Host "        MUST BE RUN AS ADMINISTRATOR                           " -ForegroundColor Yellow
+Write-Host "===============================================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Check if running as Administrator
@@ -27,7 +25,7 @@ $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Pri
 $isAdmin = $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
 if (-not $isAdmin) {
-    Write-Host "❌ ERROR: This script is NOT running as Administrator!" -ForegroundColor Red
+    Write-Host "ERROR: This script is NOT running as Administrator!" -ForegroundColor Red
     Write-Host ""
     Write-Host "Please run this script as Administrator:" -ForegroundColor Yellow
     Write-Host "  1. Right-click on the script file" -ForegroundColor Yellow
@@ -39,7 +37,7 @@ if (-not $isAdmin) {
     exit 1
 }
 
-Write-Host "✓ Running as Administrator" -ForegroundColor Green
+Write-Host "[OK] Running as Administrator" -ForegroundColor Green
 Write-Host ""
 
 # Set error action preference
@@ -59,21 +57,21 @@ function Install-WSL2 {
         $wslStatus = wsl --status 2>&1
         
         if ($LASTEXITCODE -eq 0) {
-            Write-Host "✓ WSL is already installed" -ForegroundColor Green
+            Write-Host "[OK] WSL is already installed" -ForegroundColor Green
             
             # Check if it's WSL2
             $wslVersion = wsl --list --verbose 2>&1
             if ($wslVersion -match "Version 2" -or $wslVersion -match "WSL 2") {
-                Write-Host "✓ WSL2 is already enabled and configured" -ForegroundColor Green
+                Write-Host "[OK] WSL2 is already enabled and configured" -ForegroundColor Green
                 return $true
             }
         }
     }
     catch {
-        Write-Host "ℹ WSL not detected, proceeding with installation..." -ForegroundColor Cyan
+        Write-Host "[INFO] WSL not detected, proceeding with installation..." -ForegroundColor Cyan
     }
     
-    Write-Host "ℹ Enabling WSL and Virtual Machine Platform features..." -ForegroundColor Cyan
+    Write-Host "[INFO] Enabling WSL and Virtual Machine Platform features..." -ForegroundColor Cyan
     
     try {
         # Enable WSL feature
@@ -83,35 +81,35 @@ function Install-WSL2 {
         $vmFeature = Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform -NoRestart -ErrorAction Stop
         
         if ($wslFeature.RestartNeeded -or $vmFeature.RestartNeeded) {
-            Write-Host "⚠ WSL features enabled, but a system restart is required" -ForegroundColor Yellow
+            Write-Host "[WARNING] WSL features enabled, but a system restart is required" -ForegroundColor Yellow
             $script:needsRestart = $true
         }
         
         # Download and install WSL2 kernel update
-        Write-Host "ℹ Downloading WSL2 Linux kernel update..." -ForegroundColor Cyan
+        Write-Host "[INFO] Downloading WSL2 Linux kernel update..." -ForegroundColor Cyan
         $kernelUrl = "https://wslstorestorage.blob.core.windows.net/wslblob/wsl_update_x64.msi"
         $kernelInstaller = "$env:TEMP\wsl_update_x64.msi"
         
         Invoke-WebRequest -Uri $kernelUrl -OutFile $kernelInstaller -UseBasicParsing
         
-        Write-Host "ℹ Installing WSL2 kernel update..." -ForegroundColor Cyan
+        Write-Host "[INFO] Installing WSL2 kernel update..." -ForegroundColor Cyan
         Start-Process msiexec.exe -ArgumentList "/i `"$kernelInstaller`" /quiet /norestart" -Wait -NoNewWindow
         
         # Set WSL2 as default version
-        Write-Host "ℹ Setting WSL2 as default version..." -ForegroundColor Cyan
+        Write-Host "[INFO] Setting WSL2 as default version..." -ForegroundColor Cyan
         wsl --set-default-version 2
         
         # Clean up
         Remove-Item $kernelInstaller -Force -ErrorAction SilentlyContinue
         
-        Write-Host "✓ WSL2 has been installed and configured successfully" -ForegroundColor Green
-        Write-Host "ℹ Note: You may need to restart your computer for WSL2 to work properly" -ForegroundColor Cyan
+        Write-Host "[OK] WSL2 has been installed and configured successfully" -ForegroundColor Green
+        Write-Host "[INFO] Note: You may need to restart your computer for WSL2 to work properly" -ForegroundColor Cyan
         
         return $true
     }
     catch {
-        Write-Host "⚠ Failed to install WSL2: $_" -ForegroundColor Yellow
-        Write-Host "ℹ You can manually install WSL2 later by running: wsl --install" -ForegroundColor Cyan
+        Write-Host "[WARNING] Failed to install WSL2: $_" -ForegroundColor Yellow
+        Write-Host "[INFO] You can manually install WSL2 later by running: wsl --install" -ForegroundColor Cyan
         return $false
     }
 }
@@ -138,20 +136,20 @@ function Install-WingetPackage {
         [string]$Name
     )
     
-    Write-Host "ℹ Installing $Name..." -ForegroundColor Cyan
+    Write-Host "[INFO] Installing $Name..." -ForegroundColor Cyan
     try {
         winget install --id $PackageId --silent --accept-source-agreements --accept-package-agreements
         if ($LASTEXITCODE -eq 0) {
-            Write-Host "✓ $Name installed successfully" -ForegroundColor Green
+            Write-Host "[OK] $Name installed successfully" -ForegroundColor Green
             return $true
         }
         else {
-            Write-Host "⚠ $Name installation completed with warnings" -ForegroundColor Yellow
+            Write-Host "[WARNING] $Name installation completed with warnings" -ForegroundColor Yellow
             return $true
         }
     }
     catch {
-        Write-Host "✗ Failed to install $Name : $_" -ForegroundColor Red
+        Write-Host "[ERROR] Failed to install $Name : $_" -ForegroundColor Red
         return $false
     }
 }
@@ -165,7 +163,7 @@ Write-Host ""
 
 # Check for winget
 if (-not (Test-WingetInstalled)) {
-    Write-Host "✗ winget is not installed. Please install App Installer from Microsoft Store or update Windows." -ForegroundColor Red
+    Write-Host "[ERROR] winget is not installed. Please install App Installer from Microsoft Store or update Windows." -ForegroundColor Red
     exit 1
 }
 
@@ -175,7 +173,7 @@ Install-WSL2
 Write-Host ""
 
 # Update winget sources
-Write-Host "ℹ Updating winget sources..." -ForegroundColor Cyan
+Write-Host "[INFO] Updating winget sources..." -ForegroundColor Cyan
 winget source update
 
 # Define software packages
@@ -217,8 +215,8 @@ foreach ($package in $packages) {
     Write-Host "" # Blank line for readability
 }
 
-# Install Visual Studio Community (Note: 2026 doesn't exist yet, using 2022)
-Write-Host "⚠ Note: Visual Studio Community 2026 doesn't exist yet. Installing Visual Studio Community 2022..." -ForegroundColor Yellow
+# Install Visual Studio Community (Note: 2026 does not exist yet, using 2022)
+Write-Host "[WARNING] Note: Visual Studio Community 2026 does not exist yet. Installing Visual Studio Community 2022..." -ForegroundColor Yellow
 if (Install-WingetPackage -PackageId "Microsoft.VisualStudio.2022.Community" -Name "Visual Studio Community 2022") {
     $successCount++
 }
@@ -227,8 +225,8 @@ else {
 }
 
 # Install PHP
-Write-Host "ℹ Installing PHP..." -ForegroundColor Cyan
-Write-Host "ℹ Downloading latest PHP..." -ForegroundColor Cyan
+Write-Host "[INFO] Installing PHP..." -ForegroundColor Cyan
+Write-Host "[INFO] Downloading latest PHP..." -ForegroundColor Cyan
 
 try {
     # Create PHP directory
@@ -250,7 +248,7 @@ try {
     $currentPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
     if ($currentPath -notlike "*$phpDir*") {
         [Environment]::SetEnvironmentVariable("Path", "$currentPath;$phpDir", "Machine")
-        Write-Host "✓ PHP installed and added to PATH at $phpDir" -ForegroundColor Green
+        Write-Host "[OK] PHP installed and added to PATH at $phpDir" -ForegroundColor Green
         $successCount++
     }
     
@@ -258,7 +256,7 @@ try {
     Remove-Item $phpZip -Force
 }
 catch {
-    Write-Host "✗ Failed to install PHP: $_" -ForegroundColor Red
+    Write-Host "[ERROR] Failed to install PHP: $_" -ForegroundColor Red
     $failCount++
 }
 
@@ -266,7 +264,7 @@ Write-Host ""
 
 # Install JetBrains IDEs directly
 Write-Host "=== Installing JetBrains IDEs ===" -ForegroundColor Cyan
-Write-Host "ℹ Installing IDEs directly (JetBrains Toolbox is also installed for manual management)" -ForegroundColor Cyan
+Write-Host "[INFO] Installing IDEs directly (JetBrains Toolbox is also installed for manual management)" -ForegroundColor Cyan
 Write-Host ""
 
 $jetbrainsIDEs = @(
@@ -293,14 +291,14 @@ foreach ($ide in $jetbrainsIDEs) {
 # ============================================================================
 Write-Host ""
 Write-Host "=== Installation Summary ===" -ForegroundColor Cyan
-Write-Host "✓ Successfully installed: $successCount packages" -ForegroundColor Green
+Write-Host "[OK] Successfully installed: $successCount packages" -ForegroundColor Green
 if ($failCount -gt 0) {
-    Write-Host "⚠ Failed installations: $failCount packages" -ForegroundColor Yellow
+    Write-Host "[WARNING] Failed installations: $failCount packages" -ForegroundColor Yellow
 }
 Write-Host ""
 Write-Host "IMPORTANT NOTES:" -ForegroundColor Cyan
 if ($script:needsRestart) {
-    Write-Host "⚠️  SYSTEM RESTART REQUIRED for WSL2 to function properly ⚠️" -ForegroundColor Yellow
+    Write-Host "[WARNING] SYSTEM RESTART REQUIRED for WSL2 to function properly" -ForegroundColor Yellow
     Write-Host ""
 }
 Write-Host "1. WSL2 has been installed/enabled (required for Docker Desktop)" -ForegroundColor White
@@ -312,11 +310,11 @@ Write-Host "6. JetBrains Toolbox is installed and can be used to manage IDE upda
 Write-Host ""
 
 if ($script:needsRestart) {
-    Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Yellow
+    Write-Host "===============================================================" -ForegroundColor Yellow
     Write-Host "  PLEASE RESTART YOUR COMPUTER NOW" -ForegroundColor Yellow
     Write-Host "  WSL2 and some applications require a restart to work" -ForegroundColor Yellow
-    Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Yellow
+    Write-Host "===============================================================" -ForegroundColor Yellow
     Write-Host ""
 }
 
-Write-Host "✓ Installation process complete!" -ForegroundColor Green
+Write-Host "[OK] Installation process complete!" -ForegroundColor Green
