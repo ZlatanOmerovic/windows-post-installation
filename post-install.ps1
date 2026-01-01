@@ -148,30 +148,46 @@ function Install-Winget {
         $installerPath = "$env:TEMP\Microsoft.DesktopAppInstaller.msixbundle"
         Invoke-WebRequest -Uri $downloadUrl -OutFile $installerPath -UseBasicParsing
         
-        # Download VCLibs dependency
+        # Download ALL required dependencies
         Write-Host "[INFO] Downloading required dependencies..." -ForegroundColor Cyan
+        
+        # 1. VCLibs dependency (required for both Win10 and Win11)
         $vcLibsUrl = "https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx"
         $vcLibsPath = "$env:TEMP\Microsoft.VCLibs.x64.14.00.Desktop.appx"
         Invoke-WebRequest -Uri $vcLibsUrl -OutFile $vcLibsPath -UseBasicParsing
         
-        # Download UI.Xaml dependency
+        # 2. UI.Xaml dependency (required for both Win10 and Win11)
         $uiXamlUrl = "https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.x64.appx"
         $uiXamlPath = "$env:TEMP\Microsoft.UI.Xaml.2.8.x64.appx"
         Invoke-WebRequest -Uri $uiXamlUrl -OutFile $uiXamlPath -UseBasicParsing
         
-        # Install dependencies first
-        Write-Host "[INFO] Installing dependencies..." -ForegroundColor Cyan
+        # 3. WindowsAppRuntime dependency (CRITICAL - required for latest winget)
+        Write-Host "[INFO] Downloading Windows App Runtime..." -ForegroundColor Cyan
+        $appRuntimeUrl = "https://aka.ms/windowsappsdk/1.8/latest/windowsappruntimeinstall-x64.exe"
+        $appRuntimePath = "$env:TEMP\WindowsAppRuntimeInstall.exe"
+        Invoke-WebRequest -Uri $appRuntimeUrl -OutFile $appRuntimePath -UseBasicParsing
+        
+        # Install WindowsAppRuntime first (required dependency)
+        Write-Host "[INFO] Installing Windows App Runtime..." -ForegroundColor Cyan
+        Start-Process -FilePath $appRuntimePath -ArgumentList "--quiet" -Wait -NoNewWindow
+        
+        # Install VCLibs dependency
+        Write-Host "[INFO] Installing VCLibs..." -ForegroundColor Cyan
         Add-AppxPackage -Path $vcLibsPath -ErrorAction SilentlyContinue
+        
+        # Install UI.Xaml dependency
+        Write-Host "[INFO] Installing UI.Xaml..." -ForegroundColor Cyan
         Add-AppxPackage -Path $uiXamlPath -ErrorAction SilentlyContinue
         
         # Install winget
-        Write-Host "[INFO] Installing winget..." -ForegroundColor Cyan
+        Write-Host "[INFO] Installing winget (App Installer)..." -ForegroundColor Cyan
         Add-AppxPackage -Path $installerPath
         
         # Clean up
         Remove-Item $installerPath -Force -ErrorAction SilentlyContinue
         Remove-Item $vcLibsPath -Force -ErrorAction SilentlyContinue
         Remove-Item $uiXamlPath -Force -ErrorAction SilentlyContinue
+        Remove-Item $appRuntimePath -Force -ErrorAction SilentlyContinue
         
         Write-Host "[OK] winget has been installed successfully" -ForegroundColor Green
         Write-Host "[INFO] Please close and reopen PowerShell, then run this script again" -ForegroundColor Cyan
